@@ -219,8 +219,24 @@ sort descending, return top 3
 10. **Meals pages** — library, add, detail
 11. **History page** — past plans + inline rating
 12. **Mobile polish** — 390px viewport audit, tap targets, skeletons
-13. **Seed data** — `scripts/seed.ts` parses your recipe URLs and populates initial meals
+13. **Seed data** — `scripts/seed.ts` inserts your 3 real meals (see below) + a few generic ones for variety
 14. **Recipe link display** — Meal detail page shows a tappable link to the original recipe
+
+---
+
+## Seed Meals (from your recipe links)
+
+| Name | Category | Source |
+|---|---|---|
+| Sweet Potato Ground Turkey Chili | soup | evolvingtable.com |
+| Ina Garten's Meat Loaf | other | foodnetwork.com |
+| Pioneer Woman Chicken Spaghetti | casserole | thepioneerwoman.com |
+
+**Sweet Potato Ground Turkey Chili** — Ground turkey, sweet potatoes, black beans, corn, tomatoes, chicken broth, chili powder, cumin, paprika, cinnamon. One pot, 45 min.
+
+**Ina Garten's Meat Loaf** — Ground chuck, sautéed onions, Worcestershire, chicken stock, tomato paste, bread crumbs, eggs, ketchup topping. Bake 325°F for ~1h15m.
+
+**Pioneer Woman Chicken Spaghetti** — Whole chicken (simmered), spaghetti cooked in broth, cream of mushroom soup, sharp cheddar, green pepper, onion, pimentos, cayenne. Bake 350°F for 45 min. Freezes well.
 
 ---
 
