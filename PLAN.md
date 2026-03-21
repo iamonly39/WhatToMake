@@ -13,8 +13,8 @@ A mobile-first weekly meal planning web app. The household shops Saturday/early 
 | Framework | Next.js 14 (App Router) | File-based routing, server components, API routes |
 | Language | TypeScript | Strict mode throughout |
 | Styling | Tailwind CSS | Mobile-first utility classes |
-| Database | SQLite via better-sqlite3 | Synchronous, zero-config, single file |
-| Runtime | Node.js (Next.js server) | better-sqlite3 requires Node; no edge runtime |
+| Database | Vercel Postgres (Neon) | Serverless Postgres, built-in Vercel integration |
+| Auth | None — shared household app | Everyone sees and edits the same shared data |
 
 ---
 
@@ -24,11 +24,12 @@ A mobile-first weekly meal planning web app. The household shops Saturday/early 
 
 ```sql
 CREATE TABLE IF NOT EXISTS meals (
-  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  id          SERIAL PRIMARY KEY,
   name        TEXT    NOT NULL,
   category    TEXT    NOT NULL DEFAULT 'other',
   notes       TEXT,
-  created_at  TEXT    NOT NULL DEFAULT (date('now'))
+  source_url  TEXT,             -- link to the original recipe (optional)
+  created_at  DATE    NOT NULL DEFAULT CURRENT_DATE
 );
 ```
 
@@ -38,10 +39,10 @@ CREATE TABLE IF NOT EXISTS meals (
 
 ```sql
 CREATE TABLE IF NOT EXISTS meal_history (
-  id        INTEGER PRIMARY KEY AUTOINCREMENT,
+  id        SERIAL PRIMARY KEY,
   meal_id   INTEGER NOT NULL REFERENCES meals(id) ON DELETE CASCADE,
-  made_on   TEXT    NOT NULL,   -- ISO date YYYY-MM-DD
-  rating    INTEGER,            -- 1–5, nullable until user rates it
+  made_on   DATE    NOT NULL,
+  rating    INTEGER CHECK (rating BETWEEN 1 AND 5),
   notes     TEXT
 );
 ```
@@ -50,11 +51,13 @@ CREATE TABLE IF NOT EXISTS meal_history (
 
 ```sql
 CREATE TABLE IF NOT EXISTS weekly_plans (
-  id       INTEGER PRIMARY KEY AUTOINCREMENT,
-  week_of  TEXT NOT NULL UNIQUE, -- ISO date of Saturday that starts the week
-  meal_ids TEXT NOT NULL         -- JSON array e.g. "[1,4,7]"
+  id       SERIAL PRIMARY KEY,
+  week_of  DATE NOT NULL UNIQUE,  -- the Saturday that starts the week
+  meal_ids INTEGER[] NOT NULL     -- Postgres native integer array
 );
 ```
+
+Schema lives in `scripts/schema.sql` and is applied once via `npx tsx scripts/setup-db.ts` (or the Vercel Postgres dashboard).
 
 ---
 
@@ -98,12 +101,14 @@ CREATE TABLE IF NOT EXISTS weekly_plans (
     FloatingAddButton.tsx   # FAB for adding a new meal
     WeekPlanCard.tsx        # Card showing a saved weekly plan
   lib/
-    db.ts                   # SQLite connection singleton + schema init
+    db.ts                   # Vercel Postgres client (re-exports sql tag)
     suggestions.ts          # Suggestion scoring algorithm
     dates.ts                # Date helpers (current Saturday, etc.)
-  data/                     # SQLite .db file lives here — gitignored
   scripts/
+    schema.sql              # CREATE TABLE statements — run once
+    setup-db.ts             # Runs schema.sql against the DB
     seed.ts                 # Optional: seed sample meals and history
+  .env.local                # POSTGRES_URL (gitignored, set in Vercel dashboard)
 ```
 
 ---
@@ -202,8 +207,8 @@ sort descending, return top 3
 
 ## Implementation Order
 
-1. **Scaffold** — `create-next-app`, install `better-sqlite3`, create `data/` dir
-2. **DB layer** — `lib/db.ts` singleton + schema, `lib/dates.ts` helpers
+1. **Scaffold** — `create-next-app`, install `@vercel/postgres`, add `.env.local`
+2. **DB layer** — `scripts/schema.sql`, `scripts/setup-db.ts`, `lib/db.ts`, `lib/dates.ts`
 3. **Meals API** — CRUD routes
 4. **History API** — record and rate meals
 5. **Suggestions algorithm** — pure function, test with mock data
@@ -214,15 +219,16 @@ sort descending, return top 3
 10. **Meals pages** — library, add, detail
 11. **History page** — past plans + inline rating
 12. **Mobile polish** — 390px viewport audit, tap targets, skeletons
-13. **Seed data** — `scripts/seed.ts` with 10–15 sample meals + history
+13. **Seed data** — `scripts/seed.ts` parses your recipe URLs and populates initial meals
+14. **Recipe link display** — Meal detail page shows a tappable link to the original recipe
 
 ---
 
 ## Key Design Decisions
 
-- **SQLite**: Zero infrastructure, single file, trivially backed up. Right choice for a single-household personal tool.
-- **better-sqlite3** (sync): Simpler in route handlers; blocking the event loop is irrelevant for a single-user app.
-- **No authentication**: Personal use, not worth the scope.
-- **`meal_ids` as JSON in `weekly_plans`**: Plans are tiny, never queried relationally; junction table would be overkill.
+- **Vercel Postgres (Neon)**: Serverless, zero ops, integrates directly with Vercel deploy — connection string injected automatically via environment variables.
+- **Shared household app, no auth**: Everyone hits the same data. Can add a simple shared PIN later if needed.
+- **No authentication**: Personal/household use, not worth the scope.
+- **`meal_ids` as Postgres integer array in `weekly_plans`**: Plans are tiny, never queried relationally; junction table would be overkill. Native `INTEGER[]` is cleaner than JSON in Postgres.
 - **Pure suggestion function**: Easy to unit test and modify independently of routing.
 - **Server components for initial render**: No loading spinners on first load, important on mobile.
