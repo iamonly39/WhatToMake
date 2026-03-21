@@ -57,6 +57,22 @@ CREATE TABLE IF NOT EXISTS weekly_plans (
 );
 ```
 
+### Table: `settings`
+
+```sql
+CREATE TABLE IF NOT EXISTS settings (
+  key   TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+
+-- Seed the dietary notes row so it always exists
+INSERT INTO settings (key, value)
+VALUES ('dietary_notes', '')
+ON CONFLICT (key) DO NOTHING;
+```
+
+A simple key-value table. The `dietary_notes` key holds free-form household guidance (e.g. "Low salt. No shellfish. Not spicy. Not crunchy — son has sensory issues with texture."). Stored as a single editable text block. Easy to extend with future settings keys without schema changes.
+
 Schema lives in `scripts/schema.sql` and is applied once via `npx tsx scripts/setup-db.ts` (or the Vercel Postgres dashboard).
 
 ---
@@ -81,6 +97,8 @@ Schema lives in `scripts/schema.sql` and is applied once via `npx tsx scripts/se
         page.tsx            # Meal detail: edit, history, "mark as made"
     history/
       page.tsx              # Past weekly plans + inline rating
+    preferences/
+      page.tsx              # Household dietary notes — editable by anyone
     api/
       meals/
         route.ts            # GET (list), POST (create)
@@ -94,8 +112,10 @@ Schema lives in `scripts/schema.sql` and is applied once via `npx tsx scripts/se
         route.ts            # GET current week plan, POST save plan
       suggestions/
         route.ts            # GET suggested meals
+      settings/
+        route.ts            # GET and PUT dietary_notes
   components/
-    BottomNav.tsx           # Fixed bottom navigation bar
+    BottomNav.tsx           # Fixed bottom navigation bar (Home, Meals, History, Preferences)
     MealCard.tsx            # Reusable card showing meal name + category
     StarRating.tsx          # Tap-to-rate 1–5 star component
     FloatingAddButton.tsx   # FAB for adding a new meal
@@ -128,6 +148,8 @@ Schema lives in `scripts/schema.sql` and is applied once via `npx tsx scripts/se
 | GET | `/api/plan` | Get current week's plan (or null) |
 | POST | `/api/plan` | Upsert plan for a week |
 | GET | `/api/suggestions` | Get top 3 scored meal suggestions |
+| GET | `/api/settings` | Get dietary notes |
+| PUT | `/api/settings` | Update dietary notes |
 
 ---
 
@@ -193,10 +215,17 @@ sort descending, return top 3
 - Unrated history entries show interactive `StarRating`
 - Rating saves via `PUT /api/history/[id]`
 
+### Preferences `/preferences`
+- Single editable textarea for household dietary notes
+- Pre-populated with current value from `settings.dietary_notes`
+- "Save" button calls `PUT /api/settings`
+- Shown as a soft reminder banner on the Home page (collapsed by default, tap to expand)
+- Examples already captured: low salt, no shellfish, not spicy, not crunchy
+
 ---
 
 ## Mobile UX
-- Bottom nav: Home / Meals / History with active highlight
+- Bottom nav: Home / Meals / History / Preferences with active highlight
 - Min 44px tap targets
 - Card-based layout
 - `active:scale-95` press feedback on buttons
