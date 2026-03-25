@@ -10,16 +10,20 @@ export default function AiSuggestionCard({ suggestion }: Props) {
 
   async function addToLibrary() {
     setState('loading');
-    await fetch('/api/meals', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: suggestion.name,
-        category: suggestion.category,
-        notes: suggestion.description,
-      }),
-    });
-    setState('added');
+    try {
+      await fetch('/api/meals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: suggestion.name,
+          category: suggestion.category,
+          notes: suggestion.description,
+        }),
+      });
+      setState('added');
+    } catch {
+      setState('idle');
+    }
   }
 
   return (

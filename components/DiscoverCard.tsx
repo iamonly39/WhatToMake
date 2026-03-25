@@ -12,25 +12,30 @@ export default function DiscoverCard({ recipe }: Props) {
 
   async function addToLibrary() {
     setLoading(true);
-    // Parse the recipe via Claude to get category/notes
-    const res = await fetch('/api/parse-recipe', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: recipe.sourceUrl ?? `https://spoonacular.com/recipes/${recipe.id}` }),
-    });
-    const parsed = await res.json();
-    await fetch('/api/meals', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: parsed.name ?? recipe.title,
-        category: parsed.category ?? 'other',
-        notes: parsed.notes ?? null,
-        source_url: recipe.sourceUrl ?? null,
-      }),
-    });
-    setAdded(true);
-    setLoading(false);
+    try {
+      // Parse the recipe via Claude to get category/notes
+      const res = await fetch('/api/parse-recipe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: recipe.sourceUrl ?? `https://spoonacular.com/recipes/${recipe.id}` }),
+      });
+      const parsed = await res.json();
+      await fetch('/api/meals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: parsed.name ?? recipe.title,
+          category: parsed.category ?? 'other',
+          notes: parsed.notes ?? null,
+          source_url: recipe.sourceUrl ?? null,
+        }),
+      });
+      setAdded(true);
+    } catch {
+      // allow retry
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
